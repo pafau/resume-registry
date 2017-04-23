@@ -1,24 +1,25 @@
 package net.rkr1410.resumeregistry.controller;
 
-import static org.springframework.hateoas.mvc.ControllerLinkBuilder.*;
-
 import net.rkr1410.resumeregistry.CustomMessage;
 import net.rkr1410.resumeregistry.model.Resume;
 import net.rkr1410.resumeregistry.service.ResumeService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.hateoas.Link;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.io.IOException;
 import java.util.Optional;
 
 @RestController
@@ -31,14 +32,19 @@ public class ResumeRegistryController {
     private ResumeService resumeService;
 
     @RequestMapping(value = "/resume", method = RequestMethod.POST)
-    public ResponseEntity<String> uploadResume(
+    public ResponseEntity<?> uploadResume(
             @RequestParam("email") String email,
-            @RequestParam("bodyText") String bodyText,
+            @RequestParam("body") MultipartFile resumeBody,
             UriComponentsBuilder ucBuilder) {
 
-        logger.info("Uploading resume for email {}, resume body {}", email, bodyText);
+        logger.info("Uploading resume for email {}", email);
 
-        Resume createdResume = resumeService.saveResumeForEmail(email, bodyText);
+        Resume createdResume;
+        try {
+            createdResume = resumeService.saveResumeForEmail(email, resumeBody.getBytes());
+        } catch (IOException e) {
+            return new ResponseEntity<>(new CustomMessage("File storage failed: " + e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
 
         logger.info("Resume created, version " + createdResume.getVersion());
 
@@ -51,9 +57,7 @@ public class ResumeRegistryController {
     }
 
     @RequestMapping(value = "/resume/current", method = RequestMethod.GET)
-    public ResponseEntity<?> findCurrentResumeForEmail(
-            @RequestParam("email") String email) {
-
+    public ResponseEntity<?> findCurrentResumeForEmail(@RequestParam("email") String email) {
         logger.info("Looking for current resume for email {}", email);
 
         Optional<Resume> currentResumeForEmail = resumeService.findCurrentResumeForEmail(email);
@@ -62,7 +66,7 @@ public class ResumeRegistryController {
 
             logger.info("Resume found, version " + resume.getVersion());
 
-            return new ResponseEntity<>(resume, HttpStatus.OK);
+            return createFileResponseEntityFromResume(resume, "current.txt");
         }
         else {
             logger.info("Resume not found");
@@ -98,9 +102,7 @@ public class ResumeRegistryController {
 
             logger.info("Resume found, version " + resume.getVersion());
 
-            Link link = linkTo(methodOn(ResumeRegistryController.class).findResumeForEmailByVersion(resumeVersion, email)).withSelfRel();
-            resume.add(link);
-            return new ResponseEntity<>(resume, HttpStatus.OK);
+            return createFileResponseEntityFromResume(resume, "resume_v" + resume.getVersion() + ".txt");
         }
         else {
             logger.info("Resume not found");
@@ -110,5 +112,13 @@ public class ResumeRegistryController {
         }
     }
 
-
+    private ResponseEntity createFileResponseEntityFromResume(Resume resume, String fileNamePresentedToClient) {
+        byte[] resumeBodyAsByteArray = resume.getBody();
+        ByteArrayResource resumeFileContents = new ByteArrayResource(resumeBodyAsByteArray);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + fileNamePresentedToClient)
+                .contentLength(resumeBodyAsByteArray.length)
+                .body(resumeFileContents);
+    }
 }

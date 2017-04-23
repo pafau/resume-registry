@@ -4,6 +4,10 @@ public class CustomMessage {
 
     private String message;
 
+    private CustomMessage(){
+
+    }
+
     public CustomMessage(String message){
         this.message = message;
     }

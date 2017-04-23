@@ -14,9 +14,9 @@ public class JavaMapBackedResumeServiceImpl implements ResumeService {
     private static Map<String, List<Resume>> resumesByEmail = new HashMap<>();
 
     @Override
-    public Resume saveResumeForEmail(String email, String bodyText) {
+    public Resume saveResumeForEmail(String email, byte[] body) {
         List<Resume> currentResumes = resumesByEmail.getOrDefault(email, new ArrayList<>());
-        Resume newResumeVersion = new Resume(currentResumes.size() + 1, bodyText, email);
+        Resume newResumeVersion = new Resume(currentResumes.size() + 1, body, email);
         currentResumes.add(newResumeVersion);
         resumesByEmail.put(email, currentResumes);
         return newResumeVersion;

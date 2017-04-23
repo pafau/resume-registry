@@ -16,7 +16,7 @@ import java.util.Optional;
  */
 public interface ResumeService {
 
-    Resume saveResumeForEmail(String email, String bodyText);
+    Resume saveResumeForEmail(String email, byte[] body);
     Optional<Resume> findCurrentResumeForEmail(String email);
     void deleteAllResumesForEmail(String email);
     Optional<Resume> findResumeByEmailAndVersion(String email, long version);

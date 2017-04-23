@@ -7,7 +7,7 @@ import org.springframework.hateoas.ResourceSupport;
 public class Resume extends ResourceSupport {
 
     private long version;
-    private String bodyText;
+    private byte[] body;
     private String email;
 
     // Na potrzeby ResumeRegistryTestClient, musi dać sie tworzyć przez reflection
@@ -15,9 +15,9 @@ public class Resume extends ResourceSupport {
     // pustego konstruktora
     private Resume() {}
 
-    public Resume(long version, String bodyText, String email) {
+    public Resume(long version, byte[] body, String email) {
         this.version = version;
-        this.bodyText = bodyText;
+        this.body = body;
         this.email = email;
     }
 
@@ -25,8 +25,8 @@ public class Resume extends ResourceSupport {
         return version;
     }
 
-    public String getBodyText() {
-        return bodyText;
+    public byte[] getBody() {
+        return body;
     }
 
     public String getEmail() {
