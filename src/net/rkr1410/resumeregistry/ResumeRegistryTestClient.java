@@ -4,7 +4,6 @@ import net.rkr1410.resumeregistry.model.Resume;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.web.HttpMessageConverters;
-import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.io.FileSystemResource;
@@ -34,7 +33,7 @@ public class ResumeRegistryTestClient {
     private static final String PARAM_EMAIL      = "email";
     private static final String PARAM_BODY_TEXT  = "body";
 
-    private static void createResume(String email, String bodyText) throws IOException {
+    private static void uploadResume(String email, String bodyText) throws IOException {
         RestTemplate restTemplate = new RestTemplate();
         HttpEntity<MultiValueMap<String, Object>> emailAndResumeBodyRequestEntity =
                 createEmailAndResumeBodyRequestEntity(email, bodyText);
@@ -72,7 +71,7 @@ public class ResumeRegistryTestClient {
         return new HttpMessageConverters(arrayHttpMessageConverter);
     }
 
-    private static void retrieveCurrentResumeForEmail(String email, long expectedVersion) {
+    private static void downloadCurrentResumeForEmail(String email, long expectedVersion) {
         RestTemplate restTemplate = new RestTemplate();
 
         ResponseEntity<byte[]> response = restTemplate.exchange(
@@ -80,10 +79,10 @@ public class ResumeRegistryTestClient {
                 HttpMethod.GET, createAcceptOctetStreamHttpEntity(), byte[].class, email);
 
         String expectedFilename = "current.txt";
-        assertFileFoundInContentDispositionHeader(response, expectedFilename);
+        assertFilenameFoundInContentDispositionHeader(response, expectedFilename);
     }
 
-    private static void retrieveResumeForEmailByVersion(String email, long version) {
+    private static void downloadResumeForEmailByVersion(String email, long version) {
         RestTemplate restTemplate = new RestTemplate();
 
         ResponseEntity<byte[]> response = restTemplate.exchange(
@@ -91,7 +90,7 @@ public class ResumeRegistryTestClient {
                 HttpMethod.GET, createAcceptOctetStreamHttpEntity(), byte[].class, version, email);
 
         String expectedFilename = "resume_v" + version + ".txt";
-        assertFileFoundInContentDispositionHeader(response, expectedFilename);
+        assertFilenameFoundInContentDispositionHeader(response, expectedFilename);
     }
 
     private static HttpEntity<String> createAcceptOctetStreamHttpEntity() {
@@ -100,7 +99,7 @@ public class ResumeRegistryTestClient {
         return new HttpEntity<>(headers);
     }
 
-    private static void assertFileFoundInContentDispositionHeader(ResponseEntity<byte[]> response, String expectedFilename) {
+    private static void assertFilenameFoundInContentDispositionHeader(ResponseEntity<byte[]> response, String expectedFilename) {
         List<String> contentDispositionHeaders = response.getHeaders().get("Content-Disposition");
         Assert.notEmpty(contentDispositionHeaders, "No Content-Disposition header in response");
         Assert.isTrue(contentDispositionHeaders.size() == 1, "More that one Content-Disposition header");
@@ -109,7 +108,7 @@ public class ResumeRegistryTestClient {
                 "Content-Disposition header: \"" + contentDispositionHeader + "\",\nwas expected to contain filename=" + expectedFilename);
     }
 
-    private static void failGettingCurrentResumeForNonExistentEmail(String emailNotYetStoredInRegistry) {
+    private static void failTryingToDownloadCurrentResumeForNonExistentEmail(String emailNotYetStoredInRegistry) {
         RestTemplate restTemplate = new RestTemplate();
         try {
             Resume currentResume = restTemplate.getForObject(
@@ -137,21 +136,21 @@ public class ResumeRegistryTestClient {
         String email = "test@test.com";
 
         // Users must be able to upload their CVs alongside their email identifier
-        createResume(email, "test: pierwsza wersja CV");
+        uploadResume(email, "test: pierwsza wersja CV");
 
         // Users must be able to update their CV using their email identifier
-        createResume(email, "test: druga wersja CV");
+        uploadResume(email, "test: druga wersja CV");
 
         // Users must be able to retrieve their current CV using the email identifier
         long expectedCurrentResumeVersion = 2;
-        retrieveCurrentResumeForEmail(email, expectedCurrentResumeVersion);
+        downloadCurrentResumeForEmail(email, expectedCurrentResumeVersion);
 
         // Users must be able to retrieve any version of their CV using their email identifier and version number
-        retrieveResumeForEmailByVersion(email, 1);
+        downloadResumeForEmailByVersion(email, 1);
 
         //Users must be able to delete their CV
         deleteAllResumesForEmail(email);
-        failGettingCurrentResumeForNonExistentEmail(email);
+        failTryingToDownloadCurrentResumeForNonExistentEmail(email);
 
         SpringApplication.exit(applicationContext);
     }
