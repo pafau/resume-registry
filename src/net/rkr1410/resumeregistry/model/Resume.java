@@ -10,9 +10,6 @@ public class Resume extends ResourceSupport {
     private byte[] body;
     private String email;
 
-    // Na potrzeby ResumeRegistryTestClient, musi dać sie tworzyć przez reflection
-    // instrumentacja kodu sama sobie obejdzie private, a my na zewnątrz nie wystawiamy
-    // pustego konstruktora
     private Resume() {}
 
     public Resume(long version, byte[] body, String email) {
